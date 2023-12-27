@@ -34,6 +34,9 @@
 #include "G4VUserDetectorConstruction.hh"
 #include "tls.hh"
 
+#include "G4PhysicalConstants.hh"
+#include "G4SystemOfUnits.hh"
+
 class G4VPhysicalVolume;
 class G4LogicalVolume;
 class G4Material;
@@ -75,10 +78,17 @@ class DetectorConstruction : public G4VUserDetectorConstruction
     // data members
     G4LogicalVolume*  fLogicTarget = nullptr;  // pointer to the logical Target
     G4LogicalVolume*  fLogicChamber = nullptr; // pointer to the logical Chamber
+    
+    G4String fGaz_detector = "Ne-90-CO2-10";  //;
+    G4double fGaz_temperature = 293.17 *kelvin;  //;
+    G4double fGaz_pressure= 1.1 *bar;  //;
+
 
     G4Material*       fTargetMaterial = nullptr;  // pointer to the target  material
     G4Material*       fChamberMaterial = nullptr; // pointer to the chamber material
     G4Material*       fBoxMaterial = nullptr; // pointer to the "box" material
+    G4Material*       fGasMaterial = nullptr; // pointer to the material of the gas inside the box
+    G4Material*       fNaI_scint = nullptr; // pointer to the material of NaI scintillator
 
     G4UserLimits* fStepLimit = nullptr; // pointer to user step limits
 
