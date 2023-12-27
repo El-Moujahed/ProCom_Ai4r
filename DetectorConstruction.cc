@@ -56,7 +56,21 @@
 #include "G4VisAttributes.hh"
 #include "G4Colour.hh"
 
+#include "G4PhysicalConstants.hh"
 #include "G4SystemOfUnits.hh"
+
+
+// Gestion des couleurs pour G4VisAttributes
+//   G4Colour  white   ()              ;  // white
+G4Colour  white   (1.0, 1.0, 1.0,0.5) ;  // white
+G4Colour  gris    (0.5, 0.5, 0.5) ;  // gray confiousing with gray energy unit
+G4Colour  black   (0.0, 0.0, 0.0) ;  // black
+G4Colour  red     (1.0, 0.0, 0.0) ;  // red
+G4Colour  green   (0.0, 1.0, 0.0) ;  // green
+G4Colour  blue    (0.0, 0.0, 1.0) ;  // blue
+G4Colour  cyan    (0.0, 1.0, 1.0) ;  // cyan
+G4Colour  magenta (1.0, 0.0, 1.0) ;  // magenta
+G4Colour  yellow  (1.0, 1.0, 0.0) ;  // yellow
 
 using namespace B2;
 
@@ -112,6 +126,21 @@ void DetectorConstruction::DefineMaterials()
   // Xenon gas defined using NIST Manager
   fChamberMaterial = nistManager->FindOrBuildMaterial("G4_Xe");
 
+  fNaI_scint = nistManager->FindOrBuildMaterial("G4_SODIUM_IODIDE");
+  
+  G4String Gaz = fGaz_detector;
+  G4double temperature = fGaz_temperature;
+  G4double pressure = fGaz_pressure;
+  
+  G4bool isotopes = false;
+  G4Element* Ne = nistManager->FindOrBuildElement("Ne", isotopes);
+  G4Material* CO2 = nistManager->FindOrBuildMaterial("G4_CARBON_DIOXIDE");
+  G4double density_Ne90Co210 = (0.000838505*0.9 + 0.00184212*0.1)*g/cm3; // 90 10 en volume !
+  auto Ne_90_CO2_10 = new G4Material("Ne_90_CO2_10", density_Ne90Co210, 2, kStateGas, temperature, pressure);
+  Ne_90_CO2_10->AddElement(Ne, 90*perCent);
+  Ne_90_CO2_10->AddMaterial(CO2, 10*perCent);
+  fGasMaterial = Ne_90_CO2_10;
+
   // Print materials
   G4cout << *(G4Material::GetMaterialTable()) << G4endl;
 }
@@ -122,7 +151,10 @@ G4VPhysicalVolume* DetectorConstruction::DefineVolumes()
 {
   G4Material* air  = G4Material::GetMaterial("G4_AIR");
   
-  G4Material* glass = G4Material::GetMaterial("G4_GLASS_PLATE");
+  G4Material* glass = G4Material::GetMaterial("G4_SILICON_DIOXIDE");
+
+  
+  
 
   // Sizes of the principal geometrical components (solids)
 
@@ -195,9 +227,25 @@ G4VPhysicalVolume* DetectorConstruction::DefineVolumes()
     fCheckOverlaps);                         // checking overlaps
 
 
-  // Volume intérieur : 
+  // Volume intérieur = gaz (Ne90Co210): 
   
   G4VSolid* Vol_int = new G4Box("Vol_int", L_int/2, h_int/2, l_int/2);
+  
+  auto Vol_int_LV = new G4LogicalVolume(Vol_int, fGasMaterial , "gaz");
+  
+  G4ThreeVector Gaz_Position = G4ThreeVector(0,e_bas/2,0);
+  
+  auto Vol_int_PV = new G4PVPlacement(nullptr,  // no rotation
+    Gaz_Position,                         // position
+    Vol_int_LV,                                 // its logical volume
+    "Gaz",                                 // its name
+    worldLV,                                 // its mother  volume
+    false,                                   // no boolean operations
+    0,                                       // copy number
+    fCheckOverlaps);
+    
+    
+  // Volume extérieur = l'armature en aluminium
   
   G4VSolid* Vol_ext = new G4Box("Vol_ext", L_plaques/2, (h_int+e_bas)/2, l_plaques/2);
   
@@ -219,7 +267,7 @@ G4VPhysicalVolume* DetectorConstruction::DefineVolumes()
   // Target
 
   auto targetS = new G4Tubs("target", 0., r_scint, h_scint/2, 0. * deg, 360. * deg);
-  fLogicTarget = new G4LogicalVolume(targetS, fTargetMaterial, "Target", nullptr, nullptr, nullptr);
+  fLogicTarget = new G4LogicalVolume(targetS, fNaI_scint, "Target", nullptr, nullptr, nullptr);
   
   G4double phi = 45*deg;
   G4RotationMatrix* rot_Target = new G4RotationMatrix(); 
@@ -266,13 +314,13 @@ G4VPhysicalVolume* DetectorConstruction::DefineVolumes()
   
   auto Lame_LV = new G4LogicalVolume(Lame_solid, glass, "Lame");
   
-  G4ThreeVector Lame_Position = G4ThreeVector(0,(-h_int+e_bas)/2+d_lame,0);
+  G4ThreeVector Lame_Position = G4ThreeVector(0,(-h_int)/2+d_lame,0);
   
   auto Lame_PV = new G4PVPlacement(nullptr,  // no rotation
     Lame_Position,                         // at (0,0,0)
     Lame_LV,                                 // its logical volume
     "Lame",                                 // its name
-    worldLV,                                 // its mother  volume
+    Vol_int_LV,                                 // its mother  volume
     false,                                   // no boolean operations
     0,                                       // copy number
     fCheckOverlaps);
@@ -344,6 +392,9 @@ G4VPhysicalVolume* DetectorConstruction::DefineVolumes()
 
   auto boxVisAtt = new G4VisAttributes(G4Colour(1.0, 1.0, 1.0));
   worldLV   ->SetVisAttributes(boxVisAtt);
+  
+  auto gasVisAtt = new G4VisAttributes(magenta);
+  Vol_int_LV ->SetVisAttributes(gasVisAtt);
   
   auto targetVisAtt = new G4VisAttributes(G4Colour(0, 0, 1.0));
   fLogicTarget ->SetVisAttributes(targetVisAtt);
