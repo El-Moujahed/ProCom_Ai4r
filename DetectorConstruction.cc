@@ -269,23 +269,23 @@ G4VPhysicalVolume* DetectorConstruction::DefineVolumes()
 
   // Target
 
-  auto targetS = new G4Tubs("target", 0., r_scint, h_scint/2, 0. * deg, 360. * deg);
-  fLogicTarget = new G4LogicalVolume(targetS, fNaI_scint, "Target", nullptr, nullptr, nullptr);
+  //auto targetS = new G4Tubs("target", 0., r_scint, h_scint/2, 0. * deg, 360. * deg);
+  //fLogicTarget = new G4LogicalVolume(targetS, fNaI_scint, "Target", nullptr, nullptr, nullptr);
   
-  G4double phi = 45*deg;
-  G4RotationMatrix* rot_Target = new G4RotationMatrix(); 
-  rot_Target->rotateX(90*deg);
+ // G4double phi = 45*deg;
+  G4RotationMatrix* rot_scint = new G4RotationMatrix(); 
+  rot_scint->rotateX(90*deg);
   
-  G4ThreeVector positionTarget = G4ThreeVector(0,(h_int+e_bas+h_scint)/2+e_cap,0);
+ // G4ThreeVector positionTarget = G4ThreeVector(0,(h_int+e_bas+h_scint)/2+e_cap,0);
   
-  new G4PVPlacement(rot_Target,  // no rotation
-    positionTarget,           // at (x,y,z)
-    fLogicTarget,             // its logical volume
-    "Target",                 // its name
-    worldLV,                  // its mother volume
-    false,                    // no boolean operations
-    0,                        // copy number
-    fCheckOverlaps);          // checking overlaps
+ // new G4PVPlacement(rot_scint,  // no rotation
+  //  positionTarget,           // at (x,y,z)
+  //  fLogicTarget,             // its logical volume
+  //  "Target",                 // its name
+  //  worldLV,                  // its mother volume
+  //  false,                    // no boolean operations
+  //  0,                        // copy number
+  //  fCheckOverlaps);          // checking overlaps
 
 
   // Plafond de la boîte, constituée d'un volume rectangulaire auquel on retire le cylindre pour le scintillateur.
@@ -294,7 +294,7 @@ G4VPhysicalVolume* DetectorConstruction::DefineVolumes()
   
   G4VSolid* Roof_cyl = new G4Tubs("Roof_cyl", 0., r_scint, (e_haut-e_cap)/2, 0. * deg, 360. * deg);
   
-  G4VSolid* Roof_solid = new G4SubtractionSolid("Roof_solid", Roof_boite, Roof_cyl, rot_Target, G4ThreeVector(0,e_cap/2,0) );
+  G4VSolid* Roof_solid = new G4SubtractionSolid("Roof_solid", Roof_boite, Roof_cyl, rot_scint, G4ThreeVector(0,e_cap/2,0) );
 
   auto Roof_LV = new G4LogicalVolume(Roof_solid, fBoxMaterial, "Roof");
   
@@ -330,27 +330,52 @@ G4VPhysicalVolume* DetectorConstruction::DefineVolumes()
 
   
 
+  // //****************************************************************
+  // // Gap_under_the_Sample
+  // //****************************************************************
+
+
+  G4ThreeVector Gap_under_the_Sample_S_Size(L_int/2,200*um,l_int/2);
+
+  auto Gap_under_the_Sample_S =  new G4Box("Gap_under_the_Sample_S", 0.5* Gap_under_the_Sample_S_Size.getX(), 0.5*Gap_under_the_Sample_S_Size.getY(),
+                                           0.5* Gap_under_the_Sample_S_Size.getZ());
+
+  auto Gap_under_the_Sample_LV = new G4LogicalVolume( Gap_under_the_Sample_S, fGasMaterial,"Gap_under_the_Sample_LV");
+
+  G4double Gap_under_the_Sample = -(e_lame/2+0.5*200*um);
+
+  auto Gap_under_the_Sample_PV = new G4PVPlacement(0,	//no rotation
+    G4ThreeVector(0, (-h_int)/2+d_lame+Gap_under_the_Sample , 0),		//at(0,0,0)
+    Gap_under_the_Sample_LV,				//its logical volume
+    "Gap_under_the_Sample", 				//its name
+    Vol_int_LV, 					//its mother  volume
+    false, 						//no boolean operation
+    0, 							//copy number
+    fCheckOverlaps); 					//overlaps checking
 
 
 
 
 
 
-
-  // Tracker
+  // Tracker = scintillateur NaI
 
   G4ThreeVector positionTracker = G4ThreeVector(0,0,0);
 
-  auto trackerS = new G4Tubs("tracker", 0, trackerSize, trackerSize, 0. * deg, 360. * deg);
-  auto trackerLV = new G4LogicalVolume(trackerS, air, "Tracker", nullptr, nullptr, nullptr);
-  //new G4PVPlacement(nullptr,  // no rotation
-  //  positionTracker,          // at (x,y,z)
-  //  trackerLV,                // its logical volume
-  //  "Tracker",                // its name
-  //  worldLV,                  // its mother  volume
-  //  false,                    // no boolean operations
-  //  0,                        // copy number
-  //  fCheckOverlaps);          // checking overlaps
+  auto scintS = new G4Tubs("tracker", 0., r_scint, h_scint/2, 0. * deg, 360. * deg);
+  fLogicTracker = new G4LogicalVolume(scintS, fNaI_scint, "Tracker", nullptr, nullptr, nullptr);
+  
+  G4ThreeVector positionScint = G4ThreeVector(0,(h_int+e_bas+h_scint)/2+e_cap,0);
+  
+  new G4PVPlacement(rot_scint,  // rotation de 90deg autour de l'axe X
+    positionScint,          // position
+    fLogicTracker,                // its logical volume
+    "Tracker",                // its name
+    worldLV,                  // its mother  volume
+    false,                    // no boolean operations
+    0,                        // copy number
+    fCheckOverlaps);          // checking overlaps
+
 
   // Tracker segments
 
@@ -384,12 +409,12 @@ G4VPhysicalVolume* DetectorConstruction::DefineVolumes()
             //            chamberParam,    // The parametrisation
               //          fCheckOverlaps); // checking overlaps
 
-  G4cout << "There are " << NbOfChambers << " chambers in the tracker region. "
-         << G4endl
-         << "The chambers are " << chamberWidth/cm << " cm of "
-         << fChamberMaterial->GetName() << G4endl
-         << "The distance between chamber is " << chamberSpacing/cm << " cm"
-         << G4endl;
+ // G4cout << "There are " << NbOfChambers << " chambers in the tracker region. "
+ //        << G4endl
+ //        << "The chambers are " << chamberWidth/cm << " cm of "
+ //        << fChamberMaterial->GetName() << G4endl
+ //        << "The distance between chamber is " << chamberSpacing/cm << " cm"
+ //        << G4endl;
 
   // Visualization attributes
 
@@ -398,15 +423,19 @@ G4VPhysicalVolume* DetectorConstruction::DefineVolumes()
   
   auto gasVisAtt = new G4VisAttributes(magenta);
   Vol_int_LV ->SetVisAttributes(gasVisAtt);
+ 
+  auto Gap_under_the_Sample_Att = new G4VisAttributes(blue);
+  Gap_under_the_Sample_LV ->SetVisAttributes(Gap_under_the_Sample_Att); 
   
-  auto targetVisAtt = new G4VisAttributes(G4Colour(0, 0, 1.0));
-  fLogicTarget ->SetVisAttributes(targetVisAtt);
+  
+  //auto targetVisAtt = new G4VisAttributes(G4Colour(0, 0, 1.0));
+  //fLogicTarget ->SetVisAttributes(targetVisAtt);
   
   
-  trackerLV ->SetVisAttributes(boxVisAtt);
+  fLogicTracker ->SetVisAttributes(boxVisAtt);
 
-  auto chamberVisAtt = new G4VisAttributes(G4Colour(1.0, 1.0, 0.0));
-  fLogicChamber->SetVisAttributes(chamberVisAtt);
+  //auto chamberVisAtt = new G4VisAttributes(G4Colour(1.0, 1.0, 0.0));
+  //fLogicChamber->SetVisAttributes(chamberVisAtt);
 
 
   // Example of User Limits
@@ -416,9 +445,9 @@ G4VPhysicalVolume* DetectorConstruction::DefineVolumes()
   //
   // Sets a max step length in the tracker region, with G4StepLimiter
 
-  G4double maxStep = 0.5*chamberWidth;
-  fStepLimit = new G4UserLimits(maxStep);
-  trackerLV->SetUserLimits(fStepLimit);
+  //G4double maxStep = 0.5*chamberWidth;
+  //fStepLimit = new G4UserLimits(maxStep);
+  //fLogicTracker->SetUserLimits(fStepLimit);
 
   /// Set additional contraints on the track, with G4UserSpecialCuts
   ///
@@ -442,7 +471,7 @@ void DetectorConstruction::ConstructSDandField()
   G4String trackerChamberSDname = "B2/TrackerChamberSD";
   auto aTrackerSD = new TrackerSD(trackerChamberSDname, "TrackerHitsCollection");
   G4SDManager::GetSDMpointer()->AddNewDetector(aTrackerSD);
-  SetSensitiveDetector( fLogicChamber,  aTrackerSD );
+  SetSensitiveDetector( fLogicTracker,  aTrackerSD );
 
   // Create global magnetic field messenger.
   // Uniform magnetic field is then created automatically if
