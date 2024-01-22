@@ -117,6 +117,9 @@ void DetectorConstruction::DefineMaterials()
   // Air defined using NIST Manager
   nistManager->FindOrBuildMaterial("G4_AIR");
 
+  // Glass defined using  NISR Manager
+  nistManager->FindOrBuildMaterial("G4_SILICON_DIOXIDE");
+  
   // Lead defined using NIST Manager
   fTargetMaterial  = nistManager->FindOrBuildMaterial("G4_Pb");
   
