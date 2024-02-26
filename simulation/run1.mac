@@ -1,0 +1,51 @@
+# Macro file for example B4
+# 
+# Can be run in batch, without graphic
+# or interactively: Idle> /control/execute run1.mac
+#
+# Change the default number of workers (in multi-threading mode) 
+#/run/numberOfThreads 4
+#
+
+/B4/detector/GazName_Proportion Ne-90.0-CO2-10.0
+/B4/detector/Gaz_Temperature 293.15 kelvin
+/B4/detector/Gaz_Pressure 1.1  bar
+
+
+
+
+# Initialize kernel
+/run/initialize
+
+
+#
+# Default kinematics: 
+# electron 50 MeV in direction (0.,0.,1.)
+# 1 event with tracking/verbose
+#
+
+#/gps/particle gamma
+#/gps/pos/centre 0. 0. 0 cm # Sample between 0 and 1 cm
+#/gps/ang/type beam1d
+#/gps/pos/type Beam
+#/gps/energy 1. MeV
+
+### Cs137 or Cs134
+/gps/particle ion
+/gps/ion 55 137 0 0.
+/gps/pos/centre 0. -3.5 0. mm
+/gps/ang/type iso
+/gps/energy 0 keV
+
+/analysis/setFileName simuCs137.root
+
+/tracking/verbose 0 #1for track
+
+/run/beamOn 50000
+
+#
+
+
+
+
+
