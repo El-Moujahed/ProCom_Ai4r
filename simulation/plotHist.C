@@ -24,7 +24,7 @@ void plotHist()
 
 
   // OPening the root and accessing to the TTree
-  TString filename = "simuCs134.root";
+  TString filename = "simuCs134_10000.root";
   TFile *f = TFile::Open(filename);
 
   TTree *inputTree = (TTree*) f->Get("Source");
@@ -91,7 +91,9 @@ void plotHist()
 
   // MeanX or Y is a number of channel. To convert in mm -> Number of channel x 0.4 mm (space between each channel)
   TH1F* hEdep_Detecteur = new TH1F("hEdep_Detecteur", "Edep Detecteur ; Edep [MeV] ; Count", 200, 0, 2 );
+  TH1F* hEdep_Detecteur_Smear = new TH1F("hEdep_Detecteur_Smear", "Edep Detecteur with Smear ; Edep [MeV] ; Count", 200, 0, 2 );
   TH1F* hEdep_Detecteur_EdepBeta = new TH1F("hEdep_Detecteur_EdepBeta", "Edep Detecteur with EdepGap>0 ; Edep [MeV] ; Count", 200, 0, 2 );
+  TH1F* hEdep_Detecteur_Smear_EdepBeta = new TH1F("hEdep_Detecteur_Smear_EdepBeta", "Edep Detecteur with smear and EdepGap>0 ; Edep [MeV] ; Count", 200, 0, 2 );
   //TH1F* hDelta_temps = new TH1F("hDelta_temps", "Edep Detecteur with EdepGap>0 ; Edep [MeV] ; Count", 200, 0, 2 );
 
   // Remarks : you can maybe reduce the ROI : see the hxy TCanvas after macro execution
@@ -114,16 +116,20 @@ void plotHist()
   float Edep_Min = 0.650; //pour Cs137 : 662 keV - 12 keV
   float Edep_Max = 0.680; //662 keV + 18 keV
 
-  if (filename == "simuCs134.root") {
+  if (filename == "simuCs134_10000.root") {
     Edep_Min = 0.785;     //pour Cs134 : 796 keV - 11 keV
     Edep_Max = 0.806;     //796 keV + 10 keV
   }
 
   // Initialisation de compteurs pour le calcul d'efficacité
 
-  long Cpt_Photoelec_Peak = 0;            //compteur du nb d'event dans le pic photoélectrique (autour de 662 keV pour Cs137, autour de 796 keV pour Cs134)
-  long Cpt_Photoelec_Peak_coinc_beta = 0; //pareil mais en rajoutant la condition sur la coincidence beta
-  long Cpt_tot = 0;                       //compteur du nombre total d'évènements
+  long Cpt_Photoelec_Peak = 0;                  //compteur du nb d'event dans le pic photoélectrique (autour de 662 keV pour Cs137, autour de 796 keV pour Cs134)
+  long Cpt_Photoelec_Peak_coinc_beta = 0;       //pareil mais en rajoutant la condition sur la coincidence beta
+  long Cpt_tot = 0;                             //compteur du nombre total d'évènements
+  long Cpt_Photoelec_Peak_smear = 0;            //compteur du nb d'event dans le pic photoelec en prenant en compte la résolution en énergie du detecteur (smear)
+  long Cpt_Photoelec_Peak_coinc_beta_smear = 0; //compteur du nb d'event dans le pic photoelec en coincidence avec un beta en prenant en compte la résolution en énergie du detecteur (smear)
+  long Cpt_coinc_beta_tps = 0;                  //compteur du nb d'event dans le pic photoelec en coincidence temporelle
+  long Cpt_coinc_beta_tps_smear = 0;            //compteur du nb d'event dans le pic photoelec en coincidence temporelle
 
 
 
@@ -136,38 +142,80 @@ void plotHist()
     ///////////////////
     
     Cpt_tot+=1;
+    
+    // comptage pour l'efficacité 1 : pic photoélectrique
+    
+    if(*Edep >0){
+
+      cout << " Edep " << *Edep << endl;
 
 
-    float Edep_smear = *Edep ;//**************************** une fois que la fonctione smear sera implémentée, il faudra remplacer par smear(*Edep)
-
-
-    if(Edep_smear >0){
-
-      cout << " Edep " << Edep_smear << endl;
-
-
-      if (Edep_smear>Edep_Min && Edep_smear<Edep_Max ) {
+      if (*Edep>Edep_Min && *Edep<Edep_Max ) {
         Cpt_Photoelec_Peak +=1;
       }
 
     }
 
-    hEdep_Detecteur->Fill(Edep_smear);
+    hEdep_Detecteur->Fill(*Edep);
+    
+    // Smearing de l'énergie déposée (pour l'efficacité 3) 
+    
+    Double_t ResolutionEnergy = 0.075; // 7.5%
+    Double_t electronicNoise = 0;
+//  Double_t electronicNoise = gRandom->Gaus(0.,SigmaNoise()); // MeV // unknown at 20/03/2017  
+      
+    Double_t energyResNoise = gRandom->Gaus(0.,ResolutionEnergy * *Edep); 
+    float Edep_smear = *Edep + electronicNoise + energyResNoise; 
 
+    //comptage de l'efficacité sans coincidence en tenant compte de la résolution en énergie
+        
+    if(Edep_smear >0){
+
+      cout << " Edep smear " << Edep_smear << endl;
+
+
+      if (Edep_smear>Edep_Min && Edep_smear<Edep_Max ) {
+        Cpt_Photoelec_Peak_smear +=1;
+      }
+
+    }
+    
+    hEdep_Detecteur_Smear->Fill(Edep_smear);
+    
+    
     int EventID_Detector = *EventID_det;
+    
+    // comptage du nombre de coincidence avec la detection d'un beta (efficacité 2)
 
     while(*EventID< EventID_Detector)myReader.Next();
       
     if(Test >0) cout << "EventID_Detector " << EventID_Detector << "  EventID source " << *EventID << endl;
 
     if(*Detection_Beta_Gap>0) {
+    
+      hEdep_Detecteur_EdepBeta->Fill(*Edep);
+          
+      hEdep_Detecteur_Smear_EdepBeta->Fill(Edep_smear);
 
-      hEdep_Detecteur_EdepBeta->Fill(Edep_smear);
-
-      if (Edep_smear>Edep_Min && Edep_smear<Edep_Max ) {
+      if (*Edep>Edep_Min && *Edep<Edep_Max ) {
         Cpt_Photoelec_Peak_coinc_beta +=1;
+        // comptage du nombre de coincidences temporelles (efficacité 4)  
+        if (Vec_Electron_Time.GetSize()>0 && Vec_Gamma_det_Time.GetSize()>0) {
+          long tps_gamma = Vec_Gamma_det_Time[0];
+          long tps_beta = Vec_Electron_Time[0];
+          float delta_t = (tps_gamma - tps_beta)/1e9;
+
+          cout << "t gamma : "<< tps_gamma << ", t beta : " << tps_beta <<", delta t : " <<  delta_t << endl;
+         }
 
       }
+      
+      if (Edep_smear>Edep_Min && Edep_smear<Edep_Max ) {
+        Cpt_Photoelec_Peak_coinc_beta_smear +=1;
+
+      }
+      
+      
     }
 
     if(myReader.GetCurrentEntry() > 1000 && Test >0) break;
@@ -175,9 +223,14 @@ void plotHist()
 
 
   cout << "**********************************************************" << endl;
+  cout << "File : "<<filename << endl;
   cout << "   Statistiques    " << endl;
   cout << "Compteur pic photoélectrique : " << Cpt_Photoelec_Peak <<" / " << Cpt_tot << " - efficacité 1 = " << Cpt_Photoelec_Peak/(float)Cpt_tot*100 << "%"<< endl;
   cout << "Compteur pic photoélectrique + coincidence beta : " << Cpt_Photoelec_Peak_coinc_beta <<" / " << Cpt_tot << " - efficacité 2 = " << Cpt_Photoelec_Peak_coinc_beta/(float)Cpt_tot*100 << "%"<< endl;
+  cout << "**********************************************************" << endl;
+  cout << "   Smear    " << endl;
+  cout << "Compteur pic photoélectrique avec smear : " << Cpt_Photoelec_Peak_smear <<" / " << Cpt_tot << " - efficacité 3 = " << Cpt_Photoelec_Peak_smear/(float)Cpt_tot*100 << "%"<< endl;
+  cout << "Compteur pic photoélectrique avec smear + coincidence beta : " << Cpt_Photoelec_Peak_coinc_beta_smear <<" / " << Cpt_tot << " - efficacité 4 = " << Cpt_Photoelec_Peak_coinc_beta_smear/(float)Cpt_tot*100 << "%"<< endl;
   //     cout << "   GoodEvent " << nEntries - Cpt_Event_Not_Good << " / " << nEntries  << " ~ " << double(nEntries - Cpt_Event_Not_Good)/(double)nEntries *100 << " %" << endl;
   //     cout << "   NOT GoodEvent " << Cpt_Event_Not_Good << " / " << nEntries  << "    ~ " << double(Cpt_Event_Not_Good)/(double)nEntries *100 << " %" << endl;
   cout << "**********************************************************" << endl;
@@ -210,23 +263,57 @@ void plotHist()
   C_temp->Divide(2,2);
 
   C_temp->cd(1);
-  hEdep_Detecteur->Draw("HIST");
-  hEdep_Detecteur->SetLineColor(2);
+  hEdep_Detecteur->Draw();
+  hEdep_Detecteur->SetLineColor(1);
+  hEdep_Detecteur_Smear->Draw("same");
+  hEdep_Detecteur_Smear->SetLineColor(4);
   gPad->SetLogy();
 
           C_temp->cd(2);
-  hEdep_Detecteur_EdepBeta->Draw("same");
+  hEdep_Detecteur_EdepBeta->Draw();
+  hEdep_Detecteur_EdepBeta->SetLineColor(1);
+  hEdep_Detecteur_Smear_EdepBeta->Draw("same");
+  hEdep_Detecteur_Smear_EdepBeta->SetLineColor(4);
     gPad->SetLogy();
 
           C_temp->cd(3);
- hEdep_Detecteur->Draw("HIST");
+  hEdep_Detecteur->Draw();
   hEdep_Detecteur_EdepBeta->Draw("same");
+  hEdep_Detecteur->SetLineColor(4);
+  hEdep_Detecteur_EdepBeta->SetLineColor(2);
+      gPad->SetLogy();
+  gPad->SetGridx();
+        gPad->SetGridy();
+        
+          C_temp->cd(4);
+  hEdep_Detecteur_Smear->Draw();
+  hEdep_Detecteur_Smear_EdepBeta->Draw("same");
+  hEdep_Detecteur_Smear->SetLineColor(3);
+  hEdep_Detecteur_Smear_EdepBeta->SetLineColor(6);
       gPad->SetLogy();
   gPad->SetGridx();
         gPad->SetGridy();
 
-//   outPutFile->WriteObject(c2,"c2");
 
+//    Black: 1
+//    Red: 2
+//    Green: 3
+//    Blue: 4
+//    Yellow: 5
+//    Magenta: 6
+//    Cyan: 7
+//    Orange: 8
+//    Spring: 9
+//    White: 10
+//    Azure: 11
+//    Violet: 12
+//    Teal: 13
+//    Gold: 28
+//    Silver: 30
+//    Gray: 920
+
+
+//   outPutFile->WriteObject(c2,"c2");
 /*
   TCanvas* c3 = new TCanvas("hchargey","hchargey",0,25,1920,1024);
   c3->cd();
