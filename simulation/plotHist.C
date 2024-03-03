@@ -120,16 +120,23 @@ void plotHist()
     Edep_Min = 0.785;     //pour Cs134 : 796 keV - 11 keV
     Edep_Max = 0.806;     //796 keV + 10 keV
   }
+  
+  // définition du temps maximal entre deux évènements pour les considérer comme étant en coincidence
+  
+  float t_coinc = 40e3; // 40 microsecondes - en partant du principe que les temps sont actuellement donnés en nanosecondes
 
   // Initialisation de compteurs pour le calcul d'efficacité
+  
+  long Cpt_tot = 0;                             //compteur du nombre total d'évènements
 
   long Cpt_Photoelec_Peak = 0;                  //compteur du nb d'event dans le pic photoélectrique (autour de 662 keV pour Cs137, autour de 796 keV pour Cs134)
   long Cpt_Photoelec_Peak_coinc_beta = 0;       //pareil mais en rajoutant la condition sur la coincidence beta
-  long Cpt_tot = 0;                             //compteur du nombre total d'évènements
+  
   long Cpt_Photoelec_Peak_smear = 0;            //compteur du nb d'event dans le pic photoelec en prenant en compte la résolution en énergie du detecteur (smear)
   long Cpt_Photoelec_Peak_coinc_beta_smear = 0; //compteur du nb d'event dans le pic photoelec en coincidence avec un beta en prenant en compte la résolution en énergie du detecteur (smear)
+  
   long Cpt_coinc_beta_tps = 0;                  //compteur du nb d'event dans le pic photoelec en coincidence temporelle
-  long Cpt_coinc_beta_tps_smear = 0;            //compteur du nb d'event dans le pic photoelec en coincidence temporelle
+  long Cpt_coinc_beta_tps_smear = 0;            //compteur du nb d'event dans le pic photoelec en coincidence temporelle avec le smear
 
 
 
@@ -206,12 +213,31 @@ void plotHist()
           float delta_t = (tps_gamma - tps_beta)/1e9;
 
           cout << "t gamma : "<< tps_gamma << ", t beta : " << tps_beta <<", delta t : " <<  delta_t << endl;
+          
+          if (delta_t < t_coinc) {
+            Cpt_coinc_beta_tps+=1;
+          }
+          
          }
 
       }
       
       if (Edep_smear>Edep_Min && Edep_smear<Edep_Max ) {
+      
         Cpt_Photoelec_Peak_coinc_beta_smear +=1;
+        
+        if (Vec_Electron_Time.GetSize()>0 && Vec_Gamma_det_Time.GetSize()>0) {
+          long tps_gamma = Vec_Gamma_det_Time[0];
+          long tps_beta = Vec_Electron_Time[0];
+          float delta_t = (tps_gamma - tps_beta)/1e9;
+
+          cout << "t gamma : "<< tps_gamma << ", t beta : " << tps_beta <<", delta t : " <<  delta_t << endl;
+          
+          if (delta_t < t_coinc) {
+            Cpt_coinc_beta_tps_smear+=1;
+          }
+          
+         }        
 
       }
       
@@ -229,8 +255,12 @@ void plotHist()
   cout << "Compteur pic photoélectrique + coincidence beta : " << Cpt_Photoelec_Peak_coinc_beta <<" / " << Cpt_tot << " - efficacité 2 = " << Cpt_Photoelec_Peak_coinc_beta/(float)Cpt_tot*100 << "%"<< endl;
   cout << "**********************************************************" << endl;
   cout << "   Smear    " << endl;
-  cout << "Compteur pic photoélectrique avec smear : " << Cpt_Photoelec_Peak_smear <<" / " << Cpt_tot << " - efficacité 3 = " << Cpt_Photoelec_Peak_smear/(float)Cpt_tot*100 << "%"<< endl;
-  cout << "Compteur pic photoélectrique avec smear + coincidence beta : " << Cpt_Photoelec_Peak_coinc_beta_smear <<" / " << Cpt_tot << " - efficacité 4 = " << Cpt_Photoelec_Peak_coinc_beta_smear/(float)Cpt_tot*100 << "%"<< endl;
+  cout << "Compteur pic photoélectrique avec smear : " << Cpt_Photoelec_Peak_smear <<" / " << Cpt_tot << " - efficacité = " << Cpt_Photoelec_Peak_smear/(float)Cpt_tot*100 << "%"<< endl;
+  cout << "Compteur pic photoélectrique avec smear + coincidence beta : " << Cpt_Photoelec_Peak_coinc_beta_smear <<" / " << Cpt_tot << " - efficacité 3 = " << Cpt_Photoelec_Peak_coinc_beta_smear/(float)Cpt_tot*100 << "%"<< endl;
+  cout << "**********************************************************" << endl;
+  cout << "   Coincidences temporelles    " << endl;
+  cout << "Compteur coincidences temporelles beta : " << Cpt_coinc_beta_tps <<" / " << Cpt_tot << " - efficacité = " << Cpt_coinc_beta_tps/(float)Cpt_tot*100 << "%"<< endl;
+  cout << "Compteur coincidences temporelles beta + smear : " << Cpt_coinc_beta_tps_smear <<" / " << Cpt_tot << " - efficacité 4 = " << Cpt_coinc_beta_tps_smear/(float)Cpt_tot*100 << "%"<< endl;
   //     cout << "   GoodEvent " << nEntries - Cpt_Event_Not_Good << " / " << nEntries  << " ~ " << double(nEntries - Cpt_Event_Not_Good)/(double)nEntries *100 << " %" << endl;
   //     cout << "   NOT GoodEvent " << Cpt_Event_Not_Good << " / " << nEntries  << "    ~ " << double(Cpt_Event_Not_Good)/(double)nEntries *100 << " %" << endl;
   cout << "**********************************************************" << endl;
