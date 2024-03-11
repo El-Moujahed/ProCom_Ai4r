@@ -24,7 +24,7 @@ void plotHist()
 
 
   // OPening the root and accessing to the TTree
-  TString filename = "simuCs134_10000.root";
+  TString filename = "simuCs137_10000.root";
   TFile *f = TFile::Open(filename);
 
   TTree *inputTree = (TTree*) f->Get("Source");
@@ -90,10 +90,11 @@ void plotHist()
 
 
   // MeanX or Y is a number of channel. To convert in mm -> Number of channel x 0.4 mm (space between each channel)
-  TH1F* hEdep_Detecteur = new TH1F("hEdep_Detecteur", "Edep Detecteur ; Edep [MeV] ; Count", 200, 0, 2 );
-  TH1F* hEdep_Detecteur_Smear = new TH1F("hEdep_Detecteur_Smear", "Edep Detecteur with Smear ; Edep [MeV] ; Count", 200, 0, 2 );
-  TH1F* hEdep_Detecteur_EdepBeta = new TH1F("hEdep_Detecteur_EdepBeta", "Edep Detecteur with EdepGap>0 ; Edep [MeV] ; Count", 200, 0, 2 );
-  TH1F* hEdep_Detecteur_Smear_EdepBeta = new TH1F("hEdep_Detecteur_Smear_EdepBeta", "Edep Detecteur with smear and EdepGap>0 ; Edep [MeV] ; Count", 200, 0, 2 );
+  TH1F* hEdep_Detecteur = new TH1F("hEdep_Detecteur", "Edep Detecteur ; Edep [MeV] ; Count", 200, 0, 1 );
+  TH1F* hEdep_Detecteur_Smear = new TH1F("hEdep_Detecteur_Smear", "Edep Detecteur with Smear ; Edep [MeV] ; Count", 200, 0, 1 );
+  TH1F* hEdep_Detecteur_EdepBeta = new TH1F("hEdep_Detecteur_EdepBeta", "Edep Detecteur with EdepGap>0 ; Edep [MeV] ; Count", 200, 0, 1 );
+  TH1F* hEdep_Detecteur_Smear_EdepBeta = new TH1F("hEdep_Detecteur_Smear_EdepBeta", "Edep Detecteur with smear and EdepGap>0 ; Edep [MeV] ; Count", 200, 0, 1 ); 
+  TH1F* hEdep_Detecteur_Smear_Beta_Tps = new TH1F("hEdep_Detecteur_Smear_Beta_Tps", "Edep Detecteur with smear and time coincidence ; Edep [MeV] ; Count", 200, 0, 1 );
   //TH1F* hDelta_temps = new TH1F("hDelta_temps", "Edep Detecteur with EdepGap>0 ; Edep [MeV] ; Count", 200, 0, 2 );
 
   // Remarks : you can maybe reduce the ROI : see the hxy TCanvas after macro execution
@@ -120,10 +121,20 @@ void plotHist()
     Edep_Min = 0.785;     //pour Cs134 : 796 keV - 11 keV
     Edep_Max = 0.806;     //796 keV + 10 keV
   }
+
+  float Edep_smear_Min = 0.550; //pour Cs137 autour de 662 keV
+  float Edep_smear_Max = 0.750;
+
+  if (filename == "simuCs134_10000.root") {
+    Edep_Min = 0.700;     //pour Cs134 autour de 796 keV
+    Edep_Max = 0.900;
+  }
+
+
   
   // définition du temps maximal entre deux évènements pour les considérer comme étant en coincidence
   
-  float t_coinc = 40e3; // 40 microsecondes - en partant du principe que les temps sont actuellement donnés en nanosecondes
+  float t_coinc = 20e3; // 40 microsecondes - en partant du principe que les temps sont actuellement donnés en nanosecondes
 
   // Initialisation de compteurs pour le calcul d'efficacité
   
@@ -155,6 +166,8 @@ void plotHist()
     if(*Edep >0){
 
       cout << " Edep " << *Edep << endl;
+      
+      hEdep_Detecteur->Fill(*Edep);
 
 
       if (*Edep>Edep_Min && *Edep<Edep_Max ) {
@@ -163,7 +176,7 @@ void plotHist()
 
     }
 
-    hEdep_Detecteur->Fill(*Edep);
+    
     
     // Smearing de l'énergie déposée (pour l'efficacité 3) 
     
@@ -177,19 +190,17 @@ void plotHist()
     //comptage de l'efficacité sans coincidence en tenant compte de la résolution en énergie
         
     if(Edep_smear >0){
-
+   
       cout << " Edep smear " << Edep_smear << endl;
-
+      
+      hEdep_Detecteur_Smear->Fill(Edep_smear);
 
       if (Edep_smear>Edep_Min && Edep_smear<Edep_Max ) {
         Cpt_Photoelec_Peak_smear +=1;
       }
 
     }
-    
-    hEdep_Detecteur_Smear->Fill(Edep_smear);
-    
-    
+        
     int EventID_Detector = *EventID_det;
     
     // comptage du nombre de coincidence avec la detection d'un beta (efficacité 2)
@@ -200,44 +211,50 @@ void plotHist()
 
     if(*Detection_Beta_Gap>0) {
     
-      hEdep_Detecteur_EdepBeta->Fill(*Edep);
+      if (*Edep>0) hEdep_Detecteur_EdepBeta->Fill(*Edep);
           
-      hEdep_Detecteur_Smear_EdepBeta->Fill(Edep_smear);
+      if (Edep_smear>0) hEdep_Detecteur_Smear_EdepBeta->Fill(Edep_smear);
+      
+      // calcul de la différence temporelle entre le detection du gamma et du beta:
+      
+      float delta_t = t_coinc;
 
+      if (Vec_Electron_Time.GetSize()>0 && Vec_Gamma_det_Time.GetSize()>0) {
+        long tps_gamma = Vec_Gamma_det_Time[0];
+        long tps_beta = Vec_Electron_Time[0];
+        delta_t = (tps_gamma - tps_beta);
+
+        cout << "t gamma en ns : "<< tps_gamma << ", t beta en ns : " << tps_beta <<"- delta t = " <<  delta_t << endl;
+        
+        // remplissage d'un histogramme correspondant aux évenements en coincidence - remarque : le if de comparaison de delta_t peut être sorti du if de calcul de delta_t
+          
+        if (delta_t < t_coinc) {
+          hEdep_Detecteur_Smear_Beta_Tps->Fill(Edep_smear);
+        }
+         
+      }
+         
       if (*Edep>Edep_Min && *Edep<Edep_Max ) {
+      
         Cpt_Photoelec_Peak_coinc_beta +=1;
-        // comptage du nombre de coincidences temporelles (efficacité 4)  
-        if (Vec_Electron_Time.GetSize()>0 && Vec_Gamma_det_Time.GetSize()>0) {
-          long tps_gamma = Vec_Gamma_det_Time[0];
-          long tps_beta = Vec_Electron_Time[0];
-          float delta_t = (tps_gamma - tps_beta)/1e9;
-
-          cout << "t gamma : "<< tps_gamma << ", t beta : " << tps_beta <<", delta t : " <<  delta_t << endl;
-          
-          if (delta_t < t_coinc) {
-            Cpt_coinc_beta_tps+=1;
-          }
-          
-         }
+        
+        if (delta_t < t_coinc) {
+          Cpt_coinc_beta_tps+=1;
+        }
+        
+        
 
       }
       
       if (Edep_smear>Edep_Min && Edep_smear<Edep_Max ) {
       
         Cpt_Photoelec_Peak_coinc_beta_smear +=1;
-        
-        if (Vec_Electron_Time.GetSize()>0 && Vec_Gamma_det_Time.GetSize()>0) {
-          long tps_gamma = Vec_Gamma_det_Time[0];
-          long tps_beta = Vec_Electron_Time[0];
-          float delta_t = (tps_gamma - tps_beta)/1e9;
-
-          cout << "t gamma : "<< tps_gamma << ", t beta : " << tps_beta <<", delta t : " <<  delta_t << endl;
+ 
+        if (delta_t < t_coinc) {
+          Cpt_coinc_beta_tps_smear+=1;
+        }
           
-          if (delta_t < t_coinc) {
-            Cpt_coinc_beta_tps_smear+=1;
-          }
-          
-         }        
+                 
 
       }
       
@@ -294,35 +311,46 @@ void plotHist()
 
   C_temp->cd(1);
   hEdep_Detecteur->Draw();
-  hEdep_Detecteur->SetLineColor(1);
+  hEdep_Detecteur->SetLineColor(2);
   hEdep_Detecteur_Smear->Draw("same");
-  hEdep_Detecteur_Smear->SetLineColor(4);
+  hEdep_Detecteur_Smear->SetLineColor(1);
   gPad->SetLogy();
 
-          C_temp->cd(2);
-  hEdep_Detecteur_EdepBeta->Draw();
-  hEdep_Detecteur_EdepBeta->SetLineColor(1);
-  hEdep_Detecteur_Smear_EdepBeta->Draw("same");
-  hEdep_Detecteur_Smear_EdepBeta->SetLineColor(4);
-    gPad->SetLogy();
+//          C_temp->cd(2);
+//  hEdep_Detecteur_EdepBeta->Draw();
+//  hEdep_Detecteur_EdepBeta->SetLineColor(1);
+//  hEdep_Detecteur_Smear_EdepBeta->Draw("same");
+//  hEdep_Detecteur_Smear_EdepBeta->SetLineColor(4);
+//    gPad->SetLogy();
 
-          C_temp->cd(3);
+          C_temp->cd(2);
   hEdep_Detecteur->Draw();
   hEdep_Detecteur_EdepBeta->Draw("same");
   hEdep_Detecteur->SetLineColor(4);
   hEdep_Detecteur_EdepBeta->SetLineColor(2);
+  gPad->SetLogy();
+  gPad->SetGridx();
+        gPad->SetGridy();
+        
+          C_temp->cd(3);
+  hEdep_Detecteur_Smear->Draw();
+  hEdep_Detecteur_Smear_EdepBeta->Draw("same");
+  hEdep_Detecteur_Smear->SetLineColor(1);
+  hEdep_Detecteur_Smear_EdepBeta->SetLineColor(2);
       gPad->SetLogy();
   gPad->SetGridx();
         gPad->SetGridy();
         
-          C_temp->cd(4);
+        C_temp->cd(4);
   hEdep_Detecteur_Smear->Draw();
-  hEdep_Detecteur_Smear_EdepBeta->Draw("same");
-  hEdep_Detecteur_Smear->SetLineColor(3);
-  hEdep_Detecteur_Smear_EdepBeta->SetLineColor(6);
+  hEdep_Detecteur_Smear_Beta_Tps->Draw("same");
+  hEdep_Detecteur_Smear->SetLineColor(1);
+  hEdep_Detecteur_Smear_Beta_Tps->SetLineColor(4);
       gPad->SetLogy();
   gPad->SetGridx();
         gPad->SetGridy();
+       
+
 
 
 //    Black: 1
