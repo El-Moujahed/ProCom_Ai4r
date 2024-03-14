@@ -57,8 +57,8 @@
 
 // Gestion des couleurs pour G4VisAttributes
 //   G4Colour  white   ()              ;  // white
-G4Colour  white   (1.0, 1.0, 1.0,0.5) ;  // white
-G4Colour  gris    (0.5, 0.5, 0.5) ;  // gray confiousing with gray energy unit
+G4Colour  white   (1.0, 1.0, 1.0, 0.5) ;  // white
+G4Colour  gris    (0.5, 0.5, 0.5, 0.5) ;  // gray confiousing with gray energy unit
 G4Colour  black   (0.0, 0.0, 0.0) ;  // black
 G4Colour  red     (1.0, 0.0, 0.0) ;  // red
 G4Colour  green   (0.0, 1.0, 0.0) ;  // green
@@ -125,7 +125,9 @@ void DetectorConstruction::DefineMaterials()
   nistManager->FindOrBuildMaterial("G4_SILICON_DIOXIDE");
 
   nistManager->FindOrBuildMaterial("G4_SODIUM_IODIDE");
-  
+
+  nistManager->FindOrBuildMaterial("G4_Pyrex_Glass");
+ 
   
   fBodyMaterial  = nistManager->FindOrBuildMaterial("G4_Al");
 
@@ -260,6 +262,32 @@ void DetectorConstruction::DefineMaterials()
       Gaz_detector->AddElement(Gaz_Element, Element_Proportion*perCent);
     }
   }
+  
+  
+  //***********************
+  // Création du PMMA (matière de la matrice autour de la cible) 
+  //***********************
+  
+  auto PMMA = new G4Material("PMMA",1.19*g/cm3,3);
+  
+  //Define Oxygen
+  G4double A = 16.0 * g/mole;
+  G4double Z = 8;
+  G4Element* elO = new G4Element ("Oxygen", "O", Z, A);
+ 
+ //Define Hydrogen
+  A = 1.01 * g/mole;
+  Z = 1;
+  G4Element* elH = new G4Element ("Hydrogen", "H", Z, A);
+ 
+ //Define Carbon
+  A = 12.01 * g/mole;
+  Z = 6;
+  G4Element* elC = new G4Element ("Carbon", "C", Z, A);
+
+  PMMA->AddElement(elC,5);
+  PMMA->AddElement(elO,2);
+  PMMA->AddElement(elH,8);
 
 
   // Print materials
@@ -277,7 +305,9 @@ G4VPhysicalVolume* DetectorConstruction::DefineVolumes()
   
   G4Material* air  = G4Material::GetMaterial("G4_AIR");
   
-  G4Material* glass = G4Material::GetMaterial("G4_SILICON_DIOXIDE");
+  G4Material* glass = G4Material::GetMaterial("G4_Pyrex_Glass");
+  
+  G4Material* matrice_mat = G4Material::GetMaterial("PMMA");
 
 
   if ( ! defaultMaterial || !env_mat ) {
@@ -291,30 +321,37 @@ G4VPhysicalVolume* DetectorConstruction::DefineVolumes()
     // Geometry parameters
     //
     
-    
+  // Taille du World
   G4double worldLength = 800*mm;
   
-  G4double L_plaques = 330; //longueur plaques
-  G4double l_plaques = 278; //largeur plaques
-  
-  G4double e_bas = 20*mm ; //épaisseur "sol" du système
-  G4double e_haut= 20*mm ; //épaisseur "plafond" du système
-  G4double e_murs = 30*mm ; //épaisseur "murs" du système
-  
-  G4double L_int = 330*mm - e_murs; //longueur de l'espace à l'intérieur de la boîte
-  G4double l_int = 278*mm - e_murs; //largeur de l'espace à l'intérieur de la boîte
-  
-  G4double h_int = 50*mm; //hauteur de l'espace à l'intérieur de la boîte
+  // Paramètres boîte (armature du BeaQuant)
+  G4double L_plaques = 330*mm; 
+  G4double l_plaques = 278*mm;   
+  G4double e_bas = 20*mm ;  //épaisseur "sol"
+  G4double e_haut= 20*mm ;  //épaisseur "plafond"
+  G4double e_murs = 30*mm ; //épaisseur "murs"  
+  // espace à l'intérieur du BeaQuant
+  G4double L_int = 330*mm - e_murs; 
+  G4double l_int = 278*mm - e_murs; 
+  G4double h_int = 50*mm; 
 
   G4double e_cap = 2*mm ; //épaisseur du capot (fine partie d'aluminium entre le gaz du dispositif et le scintillateur)
 
-  G4double r_scint = 58/2 * mm ; //rayon scintillateur
-  G4double h_scint = 250*mm ; //hauteur scintillateur
+  // Paramètres scintillateur
+  G4double r_scint_alu = 57/2 * mm ; //rayon armature en aluminium 
+  G4double h_scint_alu = 77*mm ;     //hauteur armature en aluminium 
+  G4double e_scint_alu_cote = 1.25*mm ;
+  G4double e_scint_alu_bas = 0.8*mm ;
+  G4double r_scint = 51/2*mm;  //rayon de la partie en NaI 
+  G4double h_scint = 51*mm;    //hauteur de la partie en NaI 
   
-  G4double e_lame = 1*mm ; //épaisseur lame de verre (sample holder)
+  // Paramètres lame en verre (Sample Holder)
+  G4double e_lame = 1*mm ;  //épaisseur lame de verre (sample holder)
   G4double L_lame = 76*mm ; //longueur lame de verre (sample holder)
   G4double l_lame = 26*mm ; //largeur lame de verre (sample holder)
   G4double d_lame = 12*mm ; //la distance entre le bas de la boite et la la lame de verre
+  
+  G4double e_mat = 5*um; //épaisseur de la matrice dans laquelle on place la source
 
 
   // *************************************************************************
@@ -399,9 +436,9 @@ G4VPhysicalVolume* DetectorConstruction::DefineVolumes()
     fCheckOverlaps);
     
   // Visualisation attributes of the detector
-  auto Cosmetic = new G4VisAttributes(gray);
+  auto Cosmetic = new G4VisAttributes(gris);
   Cosmetic -> SetVisibility(true);
-  Cosmetic -> SetForceSolid(false);
+  Cosmetic -> SetForceSolid(true);
   //skyBlue -> SetForceWireframe(true);
   Body_LV -> SetVisAttributes(Cosmetic);
 
@@ -455,13 +492,42 @@ G4VPhysicalVolume* DetectorConstruction::DefineVolumes()
     fCheckOverlaps);
     
   // Visualisation attributes of the detector
-  Cosmetic = new G4VisAttributes( red);
+  Cosmetic = new G4VisAttributes( white);
   Cosmetic -> SetVisibility(true);
-  Cosmetic -> SetForceSolid(false);
+  Cosmetic -> SetForceSolid(true);
   //skyBlue -> SetForceWireframe(true);
   Lame_LV -> SetVisAttributes(Cosmetic);
 
 
+
+  // //****************************************************************
+  // // Matrice autour de la source
+  // //****************************************************************
+  
+  
+  G4VSolid* Matrice_solid = new G4Box("Matrice_solid", e_mat/2, e_mat/2, e_mat/2);
+  
+  auto Matrice_LV = new G4LogicalVolume(Matrice_solid, matrice_mat, "Matrice");
+  
+  G4ThreeVector Matrice_Position = G4ThreeVector(0,(-h_int)/2+d_lame-(e_lame+e_mat)/2,0);
+  
+  auto Matrice_PV = new G4PVPlacement(nullptr,  // no rotation
+    Matrice_Position,                        // at (0,0,0)
+    Matrice_LV,                              // its logical volume
+    "Matrice",                               // its name
+    Vol_int_LV,                              // its mother  volume
+    false,                                   // no boolean operations
+    0,                                       // copy number
+    fCheckOverlaps);
+    
+  // Visualisation attributes of the detector
+  Cosmetic = new G4VisAttributes( green);
+  Cosmetic -> SetVisibility(true);
+  Cosmetic -> SetForceSolid(true);
+  //skyBlue -> SetForceWireframe(true);
+  Matrice_LV -> SetVisAttributes(Cosmetic);
+  
+  
 
   // //****************************************************************
   // // Gap_under_the_Sample
@@ -474,11 +540,11 @@ G4VPhysicalVolume* DetectorConstruction::DefineVolumes()
                                            0.5* Gap_under_the_Sample_S_Size.getZ());
 
   auto Gap_under_the_Sample_LV = new G4LogicalVolume( Gap_under_the_Sample_S, fGasMaterial,"Gap_under_the_Sample_LV");
-
-  G4double Gap_under_the_Sample = -(e_lame/2+0.5*200*um);
+  
+  G4ThreeVector Gap_Position = G4ThreeVector(0, (-h_int)/2 + d_lame -(e_lame+200*um)/2 - e_mat , 0);
 
   fGap_under_the_Sample_PV = new G4PVPlacement(0,	//no rotation
-    G4ThreeVector(0, (-h_int)/2+d_lame+Gap_under_the_Sample , 0),		//at(0,0,0)
+    Gap_Position,					//position
     Gap_under_the_Sample_LV,				//its logical volume
     "Gap_under_the_Sample", 				//its name
     Vol_int_LV, 					//its mother  volume
@@ -490,30 +556,54 @@ G4VPhysicalVolume* DetectorConstruction::DefineVolumes()
     // Visualisation attributes of the detector
   Cosmetic = new G4VisAttributes( blue);
   Cosmetic -> SetVisibility(true);
-  Cosmetic -> SetForceSolid(true);
+  Cosmetic -> SetForceSolid(false);
   //skyBlue -> SetForceWireframe(true);
   Gap_under_the_Sample_LV -> SetVisAttributes(Cosmetic);
 
 
+// //****************************************************************
+  // // Detecteur au NaI (scintillateur) - 
+  // // Constitué d'un cylindre en aluminium avec un cylindre en NaI dedans
+  // //****************************************************************
 
-  //Build_Detector("NaI");
   
-  auto detector_mat = G4Material::GetMaterial("G4_SODIUM_IODIDE"); // NaI = SODIUM_IODIDE Tl à ajouter si besoin
+  auto Detector_alu_S = new G4Tubs("Detector_alu_S", 0., r_scint_alu, h_scint_alu/2, 0. * deg, 360. * deg);
   
-  // dimensions utiles
+  auto Detector_alu_LV = new G4LogicalVolume(Detector_alu_S, fBodyMaterial, "Detector_LV");
+  
+  G4ThreeVector positionDet = G4ThreeVector(0,(h_int+e_bas+h_scint_alu)/2+e_cap,0);
+  
+  fDetector_PV = new G4PVPlacement(rot_scint,  // rotation de 90deg autour de l'axe X
+    positionDet,              // position
+    Detector_alu_LV,          // its logical volume
+    "Detector_alu",           // its name
+    worldLV,                  // its mother  volume
+    false,                    // no boolean operations
+    0,                        // copy number
+    fCheckOverlaps);          // checking overlaps
+
+
+    // Visualisation attributes of the detector
+  Cosmetic = new G4VisAttributes(gris);
+  Cosmetic -> SetVisibility(true);
+  Cosmetic -> SetForceSolid(true);
+  //skyBlue -> SetForceWireframe(true);
+  Detector_alu_LV -> SetVisAttributes(Cosmetic);
+  
+  
+  auto scint_mat = G4Material::GetMaterial("G4_SODIUM_IODIDE"); // NaI = SODIUM_IODIDE Tl à ajouter si besoin
 
   auto Detector_S = new G4Tubs("Detector_S", 0., r_scint, h_scint/2, 0. * deg, 360. * deg);
   
-  auto Detector_LV = new G4LogicalVolume(Detector_S, detector_mat, "Detector_LV");
+  auto Detector_LV = new G4LogicalVolume(Detector_S, scint_mat, "Detector_LV");
   
+  G4ThreeVector positionScint = G4ThreeVector(0,0,(-h_scint_alu+h_scint)/2+e_scint_alu_bas);
   
-  G4ThreeVector positionScint = G4ThreeVector(0,(h_int+e_bas+h_scint)/2+e_cap,0);
-  
-  fDetector_PV = new G4PVPlacement(rot_scint,  // rotation de 90deg autour de l'axe X
-    positionScint,          // position
-    Detector_LV,                // its logical volume
-    "Detector",                // its name
-    worldLV,                  // its mother  volume
+  fDetector_PV = new G4PVPlacement(0,  // no rotation dans le referentiel du cylindre d'alu
+    positionScint,              // position
+    Detector_LV,               // its logical volume
+    "Detector_alu",           // its name
+    Detector_alu_LV,          // its mother  volume
     false,                    // no boolean operations
     0,                        // copy number
     fCheckOverlaps);          // checking overlaps
