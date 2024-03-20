@@ -101,11 +101,11 @@ namespace B4b
 
     G4int counter = 0;
     analysisManager->FillNtupleIColumn(0,counter++, Event_Number);
-    analysisManager->FillNtupleSColumn(0,counter++, fparticleName);
+//    analysisManager->FillNtupleSColumn(0,counter++, fparticleName);
 
     analysisManager->FillNtupleIColumn(0,counter++, fvec_Electron.size());
     analysisManager->FillNtupleIColumn(0,counter++, fvec_Gamma.size());
-    analysisManager->FillNtupleIColumn(0,counter++, Detection_Beta);
+    analysisManager->FillNtupleFColumn(0,counter++, Edep_Gap_under_the_Sample_PV);
 
     // POur les tab on remplit le tableau (vector associée et c'est Ok !)
 
@@ -120,6 +120,7 @@ namespace B4b
     for ( auto x : fvec_Electron ){
     runAction->fVec_Electron_Kinetic.push_back(x["Kinetic_Energy"]);
     runAction->fVec_Electron_Time.push_back(x["Time"]);
+    break;
     }
     for ( auto x : fvec_Gamma ){
     runAction->fVec_Gamma_Kinetic.push_back(x["Kinetic_Energy"]);
