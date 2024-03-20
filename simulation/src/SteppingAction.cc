@@ -85,7 +85,7 @@ namespace B4b
 
     G4double Time = step ->GetPreStepPoint()->GetGlobalTime();
 
-    auto Kinetic_Energy = step->GetTrack()->GetKineticEnergy();
+    auto Kinetic_Energy = step->GetPreStepPoint()->GetKineticEnergy();
 
     /// Get track creator process name
     const G4VProcess * creatorProcess = step->GetTrack()->GetCreatorProcess();;
