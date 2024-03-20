@@ -96,11 +96,11 @@ RunAction::RunAction()
   analysisManager->CreateNtuple(Name_Ntuple, Name_Ntuple);
 
   CategoryName = "EventID";TypeColumn="I"; CreateCollumn( TypeColumn,  Ntuple_ID, Column_ID, CategoryName,  analysisManager);
-  CategoryName = "Particule_Name";TypeColumn="S"; CreateCollumn( TypeColumn,  Ntuple_ID, Column_ID, CategoryName,  analysisManager);
+//  CategoryName = "Particule_Name";TypeColumn="S"; CreateCollumn( TypeColumn,  Ntuple_ID, Column_ID, CategoryName,  analysisManager);
 
   CategoryName = "NbrBeta";TypeColumn="I"; CreateCollumn( TypeColumn,  Ntuple_ID, Column_ID, CategoryName,  analysisManager);
   CategoryName = "NbrGamma";TypeColumn="I"; CreateCollumn( TypeColumn,  Ntuple_ID, Column_ID, CategoryName,  analysisManager);
-  CategoryName = "Detection_Beta_Gap";TypeColumn="I"; CreateCollumn( TypeColumn,  Ntuple_ID, Column_ID, CategoryName,  analysisManager);
+  CategoryName = "Detection_Beta_Gap";TypeColumn="F"; CreateCollumn( TypeColumn,  Ntuple_ID, Column_ID, CategoryName,  analysisManager);
 
   CategoryName = "Vec_Electron_Kinetic";TypeColumn="F"; CreateTabCollumn( TypeColumn,  Ntuple_ID, CategoryName,  analysisManager);
   CategoryName = "Vec_Electron_Time";TypeColumn="D"; CreateTabCollumn( TypeColumn,  Ntuple_ID, CategoryName,  analysisManager);
