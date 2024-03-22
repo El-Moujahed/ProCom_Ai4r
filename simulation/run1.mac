@@ -37,11 +37,11 @@
 /gps/ang/type iso
 /gps/energy 0 keV
 
-/analysis/setFileName simuCs137.root
+/analysis/setFileName simuCs137_5000_opti2.root
 
 /tracking/verbose 0 #1for track
 
-/run/beamOn 50000
+/run/beamOn 5000
 
 #
 
