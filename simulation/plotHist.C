@@ -24,7 +24,12 @@ void plotHist()
 
 
   // OPening the root and accessing to the TTree
-  TString filename = "simuCs137_10000.root";
+  
+  int isotope = 134;  //    <--------------------------------------------------------    On décide ici si on va traiter une simu avec du Cs137 ou 134 
+  
+  TString filename = "simuCs137_10000_opti2.root";
+  if (isotope == 134) filename = "simuCs134_10000_opti2.root" ;
+  
   TFile *f = TFile::Open(filename);
 
   TTree *inputTree = (TTree*) f->Get("Source");
@@ -57,7 +62,7 @@ void plotHist()
 
   TTreeReader myReader("Source",f);
   TTreeReaderValue<int> EventID(myReader, "EventID");
-  TTreeReaderValue<int> Detection_Beta_Gap(myReader, "Detection_Beta_Gap");
+  TTreeReaderValue<float> Edep_Gap(myReader, "Detection_Beta_Gap");
 
 
   TTreeReaderArray<float> Vec_Gamma_Kinetic(myReader, "Vec_Gamma_Kinetic"); // mean of channel number
@@ -114,28 +119,53 @@ void plotHist()
   // Défition de Edep_Min et Edep_Max :
   // Les bornes de l'intervalle sur laquelle on considère que les évenements sont "dans le pic photoélectrique"
   
-  float Edep_Min = 0.650; //pour Cs137 : 662 keV - 12 keV
-  float Edep_Max = 0.680; //662 keV + 18 keV
-
-  if (filename == "simuCs134_10000.root") {
-    Edep_Min = 0.785;     //pour Cs134 : 796 keV - 11 keV
-    Edep_Max = 0.806;     //796 keV + 10 keV
+  float Edep_Min_662 = 0.650; //pour Cs137 : 662 keV - 12 keV
+  float Edep_Max_662 = 0.680; //662 keV + 18 keV
+  
+  float Edep_Min_796 = 0.785; //pour Cs134 : 796 keV - 11 keV
+  float Edep_Max_796 = 0.806; //796 keV + 10 keV
+  
+  float Edep_Min=0;
+  float Edep_Max=0;
+  
+  if (isotope == 137) {
+    Edep_Min = Edep_Min_662;    
+    Edep_Max = Edep_Max_662;    
   }
 
-  float Edep_smear_Min = 0.550; //pour Cs137 autour de 662 keV
-  float Edep_smear_Max = 0.750;
 
-  if (filename == "simuCs134_10000.root") {
-    Edep_Min = 0.700;     //pour Cs134 autour de 796 keV
-    Edep_Max = 0.900;
+  if (isotope == 134) {
+    Edep_Min = Edep_Min_796;    
+    Edep_Max = Edep_Max_796;    
   }
+
+  float Edep_smear_Min_662 = 0.550; //pour Cs137 autour de 662 keV
+  float Edep_smear_Max_662 = 0.750;
+  
+  float Edep_smear_Min_796 = 0.700; //pour Cs134 autour de 796 keV
+  float Edep_smear_Max_796 = 0.900;
+  
+  float Edep_smear_Min=0;
+  float Edep_smear_Max=0;
+
+  if (isotope == 137) {
+    Edep_smear_Min = Edep_smear_Min_662;     
+    Edep_smear_Max = Edep_smear_Max_662;
+  }
+  
+  if (isotope == 134) {
+    Edep_smear_Min = Edep_smear_Min_796;     
+    Edep_smear_Max = Edep_smear_Max_796;
+  }
+  
+
 
 
   
   // définition du temps maximal entre deux évènements pour les considérer comme étant en coincidence
   
-  float t_coinc = 20e3; // 40 microsecondes - en partant du principe que les temps sont actuellement donnés en nanosecondes
-
+  float t_coinc = 50e3; // 50 microsecondes - correspond au temps mort du BeaQuant
+  
   // Initialisation de compteurs pour le calcul d'efficacité
   
   long Cpt_tot = 0;                             //compteur du nombre total d'évènements
@@ -165,7 +195,7 @@ void plotHist()
     
     if(*Edep >0){
 
-      cout << " Edep " << *Edep << endl;
+     // cout << " Edep " << *Edep << endl;
       
       hEdep_Detecteur->Fill(*Edep);
 
@@ -177,7 +207,6 @@ void plotHist()
     }
 
     
-    
     // Smearing de l'énergie déposée (pour l'efficacité 3) 
     
     Double_t ResolutionEnergy = 0.075; // 7.5%
@@ -186,16 +215,17 @@ void plotHist()
       
     Double_t energyResNoise = gRandom->Gaus(0.,ResolutionEnergy * *Edep); 
     float Edep_smear = *Edep + electronicNoise + energyResNoise; 
+    
 
-    //comptage de l'efficacité sans coincidence en tenant compte de la résolution en énergie
+    // Comptage de l'efficacité sans coincidence en tenant compte de la résolution en énergie
         
     if(Edep_smear >0){
    
-      cout << " Edep smear " << Edep_smear << endl;
+     // cout << " Edep smear " << Edep_smear << endl;
       
       hEdep_Detecteur_Smear->Fill(Edep_smear);
 
-      if (Edep_smear>Edep_Min && Edep_smear<Edep_Max ) {
+      if (Edep_smear>Edep_smear_Min && Edep_smear<Edep_smear_Max ) {
         Cpt_Photoelec_Peak_smear +=1;
       }
 
@@ -203,13 +233,13 @@ void plotHist()
         
     int EventID_Detector = *EventID_det;
     
-    // comptage du nombre de coincidence avec la detection d'un beta (efficacité 2)
+    // Comptage du nombre de coincidence avec la detection d'un beta (efficacité 2)
 
     while(*EventID< EventID_Detector)myReader.Next();
       
     if(Test >0) cout << "EventID_Detector " << EventID_Detector << "  EventID source " << *EventID << endl;
 
-    if(*Detection_Beta_Gap>0) {
+    if(*Edep_Gap>0.001) {   // on garde seulement si on a déposé plus de 1 keV dans le gap
     
       if (*Edep>0) hEdep_Detecteur_EdepBeta->Fill(*Edep);
           
@@ -220,6 +250,7 @@ void plotHist()
       float delta_t = t_coinc;
 
       if (Vec_Electron_Time.GetSize()>0 && Vec_Gamma_det_Time.GetSize()>0) {
+      //  cout << "taille vec electron time : " << Vec_Electron_Time.GetSize() << endl ;
         long tps_gamma = Vec_Gamma_det_Time[0];
         long tps_beta = Vec_Electron_Time[0];
         delta_t = (tps_gamma - tps_beta);
@@ -246,7 +277,7 @@ void plotHist()
 
       }
       
-      if (Edep_smear>Edep_Min && Edep_smear<Edep_Max ) {
+      if (Edep_smear>Edep_smear_Min && Edep_smear<Edep_smear_Max ) {
       
         Cpt_Photoelec_Peak_coinc_beta_smear +=1;
  
@@ -298,11 +329,25 @@ void plotHist()
 
   // La fonction Integral prend en entrée des valeurs de bin et non d'énergies
   // Donc il faut commencer par trouver les bin min et max correspondant à nos énergies min et max, à l'aide de FindBin
-  int Bin_Min = hEdep_Detecteur->FindBin(Edep_Min);
-  int Bin_Max = hEdep_Detecteur->FindBin(Edep_Max);
+  int Bin_Min = hEdep_Detecteur_Smear->FindBin(Edep_smear_Min_662);
+  int Bin_Max = hEdep_Detecteur_Smear->FindBin(Edep_smear_Max_662);
 
-  double Integral_Edep_Min_Max = hEdep_Detecteur->Integral(Bin_Min, Bin_Max);
-  cout << Integral_Edep_Min_Max <<endl;
+  double Integral_Edep_662 = hEdep_Detecteur_Smear->Integral(Bin_Min, Bin_Max);
+  cout << "Intégrale pic 662 keV  (brut) : " << Integral_Edep_662 <<endl;
+  
+  double Integral_Edep_662_coinc = hEdep_Detecteur_Smear_EdepBeta->Integral(Bin_Min, Bin_Max);
+  cout << "Intégrale pic 662 keV  (coinc spatiale) : " << Integral_Edep_662_coinc <<endl;
+  
+  Bin_Min = hEdep_Detecteur_Smear->FindBin(Edep_smear_Min_796);
+  Bin_Max = hEdep_Detecteur_Smear->FindBin(Edep_smear_Max_796);
+
+  double Integral_Edep_796 = hEdep_Detecteur_Smear->Integral(Bin_Min, Bin_Max);
+  cout << "Intégrale pic 796 keV  (brut) : " << Integral_Edep_796 <<endl;
+  
+  double Integral_Edep_796_coinc = hEdep_Detecteur_Smear_EdepBeta->Integral(Bin_Min, Bin_Max);
+  cout << "Intégrale pic 796 keV  (coinc spatiale) : " << Integral_Edep_796_coinc <<endl;
+  
+  cout << "**********************************************************" << endl;
 
 
   //     outPutFile->WriteObject(c1,"c1"); // You can use this option if especially if you use TGraph objects and if you use option like "colz". It's easier to reopen via the TBrowser
@@ -315,6 +360,8 @@ void plotHist()
   hEdep_Detecteur_Smear->Draw("same");
   hEdep_Detecteur_Smear->SetLineColor(1);
   gPad->SetLogy();
+  gPad->SetGridx();
+        gPad->SetGridy();
 
 //          C_temp->cd(2);
 //  hEdep_Detecteur_EdepBeta->Draw();
